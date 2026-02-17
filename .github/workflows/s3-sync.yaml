@@ -1,0 +1,43 @@
+on:
+
+  workflow_call:
+  
+    inputs:
+      bucket_name:
+        required: true
+        type: string
+      aws_region:
+        required: false
+        type: string
+        default: "us-east-1"
+      dir_to_sync:
+        required: false
+        type: string
+        default: "static"
+        description: "Directory in the repository to sync to the root of the S3 bucket. Typically `static` or `.`."
+        
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        description: "AWS Access Key ID with access to required S3 bucket."
+      AWS_SECRET_ACCESS_KEY:
+        description: "Respective AWS Access Key Secret."
+        
+jobs:
+
+  s3-sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+    
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Sync files to S3
+        run: aws s3 sync ${{ inputs.dir_to_sync }} s3://${{ inputs.bucket_name }} --delete
