@@ -40,4 +40,8 @@ jobs:
           aws-region: ${{ inputs.aws_region }}
 
       - name: Sync files to S3
-        run: aws s3 sync ${{ inputs.dir_to_sync }} s3://${{ inputs.bucket_name }} --delete
+        run: |
+          aws s3 sync ${{ inputs.dir_to_sync }} s3://${{ inputs.bucket_name }} \
+          --delete \
+          --exclude ".*" \
+          --exclude "*/.*" 
