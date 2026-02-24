@@ -44,4 +44,5 @@ jobs:
           aws s3 sync ${{ inputs.dir_to_sync }} s3://${{ inputs.bucket_name }} \
           --delete \
           --exclude ".*" \
-          --exclude "*/.*" 
+          --exclude "*/.*" \
+          --exclude "*.md"
