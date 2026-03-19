@@ -1,7 +1,5 @@
 on:
-
   workflow_call:
-  
     inputs:
       bucket_name:
         required: true
@@ -18,17 +16,16 @@ on:
         
     secrets:
       AWS_ACCESS_KEY_ID:
+        required: true
         description: "AWS Access Key ID with access to required S3 bucket."
       AWS_SECRET_ACCESS_KEY:
+        required: true
         description: "Respective AWS Access Key Secret."
         
 jobs:
-
   s3-sync:
     runs-on: ubuntu-latest
-    
     steps:
-    
       - name: Checkout Repository
         uses: actions/checkout@v6
 
