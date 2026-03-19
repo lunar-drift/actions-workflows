@@ -1,0 +1,79 @@
+name: aws-lambda-python-update-function
+on:
+  workflow_call:
+    inputs:
+      aws_region:
+        required: false
+        type: string
+        default: "us-east-1"
+      zip_filename:
+        required: true
+        type: string
+      bucket_name:
+        required: true
+        type: string
+        description: "Name of bucket lambda layer zip files are stored"
+      directory:
+        required: true
+        type: string
+        description: "Directory where python lambda files are located."
+      files:
+        required: true
+        type: string
+        description: "Space separated list of python files apart of the lambda."
+      lambda_function_name:
+        required: true
+        type: string
+        description: "Name of Lambda function to be updated. "
+
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+        description: "AWS Access Key ID with necessary access."
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+        description: "Respective AWS Access Key Secret."
+
+jobs:
+  create-archive:
+    name: Create Function Zip Archive
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        name: Checkout Repo
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Create Zip Archive
+        working-directory: ${{ inputs.directory }}
+        run: zip ${{ inputs.zip_filename }} ${{ inputs.files }}
+
+      - name: Upload Zip Archive
+        working-directory: ${{ inputs.directory }}
+        run: aws s3 cp ${{ inputs.zip_filename }} s3://${{ inputs.bucket_name }}/
+
+  update-function:
+    runs-on: ubuntu-latest
+    needs: create-archive
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Update Lambda Function Code
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ inputs.lambda_function_name }} \
+            --s3-bucket ${{ inputs.bucket_name }} \
+            --s3-key ${{ inputs.zip_filename }}
+
+  # Test Function...
+  # publish | https://docs.aws.amazon.com/cli/latest/reference/lambda/publish-version.html

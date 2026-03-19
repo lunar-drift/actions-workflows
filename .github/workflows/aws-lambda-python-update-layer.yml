@@ -1,0 +1,69 @@
+name: aws-lambda-python-update-layer
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        required: false
+        type: string
+        default: "3.13"
+      aws_region:
+        required: false
+        type: string
+        default: "us-east-1"
+      zip_filename:
+        required: true
+        type: string
+      bucket_name:
+        required: true
+        type: string
+        description: "Name of bucket lambda layer zip files are stored"
+      directory:
+        required: true
+        type: string
+        description: "Directory where python requirements.txt file is located."
+      requirement_file:
+        required: false
+        type: string
+        default: "requirements.txt"
+
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+        description: "AWS Access Key ID with necessary access."
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+        description: "Respective AWS Access Key Secret."
+
+jobs:
+  prepare-layer:
+    name: Prepare Lambda Layer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        name: Checkout Repo
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Install Packages via pip
+        working-directory: ${{ inputs.directory }}
+        run: |
+          pip install \
+            --platform manylinux2014_x86_64 \
+            --target python \
+            --implementation cp \
+            --python-version ${{ inputs.python_version }} \
+            --only-binary=:all: --upgrade \
+            --requirement ${{ inputs.requirement_file }}
+
+      - name: Create Zip Archive
+        working-directory: ${{ inputs.directory }}
+        run: zip -r ${{ inputs.zip_filename }} python/
+
+      - name: Upload Zip Archive
+        working-directory: ${{ inputs.directory }}
+        run: aws s3 cp ${{ inputs.zip_filename }} s3://${{ inputs.bucket_name }}/
